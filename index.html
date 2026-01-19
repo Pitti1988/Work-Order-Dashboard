@@ -1,0 +1,1340 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Work Order Daily Totals Dashboard | Arey Jones</title>
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        :root {
+            --bg-primary: #0a0f1a;
+            --bg-secondary: #111827;
+            --bg-card: #1a2234;
+            --bg-card-hover: #1f2940;
+            --text-primary: #f1f5f9;
+            --text-secondary: #94a3b8;
+            --text-muted: #64748b;
+            --accent-blue: #3b82f6;
+            --accent-cyan: #06b6d4;
+            --accent-emerald: #10b981;
+            --accent-amber: #f59e0b;
+            --accent-rose: #f43f5e;
+            --accent-purple: #8b5cf6;
+            --accent-orange: #f97316;
+            --accent-pink: #ec4899;
+            --border-color: #2d3748;
+            --gradient-1: linear-gradient(135deg, #3b82f6 0%, #06b6d4 100%);
+            --gradient-2: linear-gradient(135deg, #10b981 0%, #06b6d4 100%);
+            --gradient-3: linear-gradient(135deg, #f59e0b 0%, #f97316 100%);
+            --gradient-4: linear-gradient(135deg, #8b5cf6 0%, #ec4899 100%);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'DM Sans', sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            min-height: 100vh;
+            line-height: 1.6;
+        }
+
+        .dashboard {
+            max-width: 1600px;
+            margin: 0 auto;
+            padding: 24px;
+        }
+
+        /* Header */
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 32px;
+            padding-bottom: 24px;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .header-left h1 {
+            font-size: 28px;
+            font-weight: 700;
+            background: var(--gradient-1);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin-bottom: 4px;
+        }
+
+        .header-left p {
+            color: var(--text-secondary);
+            font-size: 14px;
+        }
+
+        .header-right {
+            display: flex;
+            gap: 12px;
+            align-items: center;
+        }
+
+        .week-toggle {
+            display: flex;
+            background: var(--bg-secondary);
+            border-radius: 10px;
+            padding: 4px;
+            border: 1px solid var(--border-color);
+        }
+
+        .week-toggle button {
+            padding: 10px 20px;
+            border: none;
+            background: transparent;
+            color: var(--text-secondary);
+            font-family: 'DM Sans', sans-serif;
+            font-size: 13px;
+            font-weight: 500;
+            cursor: pointer;
+            border-radius: 8px;
+            transition: all 0.2s ease;
+        }
+
+        .week-toggle button.active {
+            background: var(--gradient-1);
+            color: white;
+        }
+
+        .week-toggle button:hover:not(.active) {
+            color: var(--text-primary);
+            background: var(--bg-card);
+        }
+
+        /* Summary Cards */
+        .summary-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 16px;
+            margin-bottom: 32px;
+        }
+
+        .summary-card {
+            background: var(--bg-card);
+            border-radius: 16px;
+            padding: 20px;
+            border: 1px solid var(--border-color);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .summary-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 3px;
+        }
+
+        .summary-card:nth-child(1)::before { background: var(--gradient-1); }
+        .summary-card:nth-child(2)::before { background: var(--gradient-2); }
+        .summary-card:nth-child(3)::before { background: var(--gradient-3); }
+        .summary-card:nth-child(4)::before { background: var(--gradient-4); }
+        .summary-card:nth-child(5)::before { background: linear-gradient(135deg, #f43f5e 0%, #f97316 100%); }
+        .summary-card:nth-child(6)::before { background: linear-gradient(135deg, #06b6d4 0%, #10b981 100%); }
+        .summary-card:nth-child(7)::before { background: linear-gradient(135deg, #ec4899 0%, #8b5cf6 100%); }
+
+        .summary-card-label {
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: var(--text-muted);
+            margin-bottom: 8px;
+        }
+
+        .summary-card-value {
+            font-family: 'Space Mono', monospace;
+            font-size: 28px;
+            font-weight: 700;
+            color: var(--text-primary);
+        }
+
+        .summary-card-change {
+            font-size: 12px;
+            margin-top: 8px;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .summary-card-change.positive { color: var(--accent-emerald); }
+        .summary-card-change.negative { color: var(--accent-rose); }
+
+        /* Main Content Grid */
+        .main-grid {
+            display: grid;
+            grid-template-columns: 1fr 380px;
+            gap: 24px;
+            margin-bottom: 32px;
+        }
+
+        @media (max-width: 1200px) {
+            .main-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        /* Cards */
+        .card {
+            background: var(--bg-card);
+            border-radius: 16px;
+            border: 1px solid var(--border-color);
+            overflow: hidden;
+        }
+
+        .card-header {
+            padding: 20px 24px;
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .card-title {
+            font-size: 16px;
+            font-weight: 600;
+        }
+
+        .card-subtitle {
+            font-size: 12px;
+            color: var(--text-muted);
+            margin-top: 2px;
+        }
+
+        .card-body {
+            padding: 24px;
+        }
+
+        /* Chart Container */
+        .chart-container {
+            position: relative;
+            height: 320px;
+        }
+
+        /* Warehouse Grid */
+        .warehouse-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(360px, 1fr));
+            gap: 20px;
+        }
+
+        .warehouse-card {
+            background: var(--bg-card);
+            border-radius: 16px;
+            border: 1px solid var(--border-color);
+            overflow: hidden;
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+        }
+
+        .warehouse-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+        }
+
+        .warehouse-header {
+            padding: 16px 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .warehouse-name {
+            font-size: 15px;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .warehouse-icon {
+            width: 32px;
+            height: 32px;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 14px;
+        }
+
+        .warehouse-total {
+            font-family: 'Space Mono', monospace;
+            font-size: 20px;
+            font-weight: 700;
+        }
+
+        .warehouse-body {
+            padding: 16px 20px;
+        }
+
+        .warehouse-stats {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 10px;
+            margin-bottom: 16px;
+        }
+
+        .warehouse-stat {
+            text-align: center;
+            padding: 10px 6px;
+            background: var(--bg-secondary);
+            border-radius: 10px;
+        }
+
+        .warehouse-stat-label {
+            font-size: 9px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: var(--text-muted);
+            margin-bottom: 4px;
+        }
+
+        .warehouse-stat-value {
+            font-family: 'Space Mono', monospace;
+            font-size: 14px;
+            font-weight: 600;
+        }
+
+        /* Technician Table */
+        .tech-table {
+            width: 100%;
+            font-size: 13px;
+        }
+
+        .tech-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 8px 0;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .tech-row:last-child {
+            border-bottom: none;
+        }
+
+        .tech-name {
+            color: var(--text-secondary);
+            flex: 1;
+        }
+
+        .tech-count {
+            font-family: 'Space Mono', monospace;
+            font-weight: 600;
+            min-width: 40px;
+            text-align: right;
+        }
+
+        .tech-bar {
+            width: 80px;
+            height: 6px;
+            background: var(--bg-secondary);
+            border-radius: 3px;
+            margin-left: 12px;
+            overflow: hidden;
+        }
+
+        .tech-bar-fill {
+            height: 100%;
+            border-radius: 3px;
+            transition: width 0.3s ease;
+        }
+
+        /* Show More Button */
+        .show-more-btn {
+            width: 100%;
+            padding: 10px;
+            margin-top: 12px;
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            color: var(--accent-cyan);
+            font-family: 'DM Sans', sans-serif;
+            font-size: 12px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .show-more-btn:hover {
+            background: var(--bg-card-hover);
+            color: var(--text-primary);
+        }
+
+        /* Leaderboard */
+        .leaderboard {
+            max-height: 500px;
+            overflow-y: auto;
+        }
+
+        .leaderboard::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        .leaderboard::-webkit-scrollbar-track {
+            background: var(--bg-secondary);
+            border-radius: 3px;
+        }
+
+        .leaderboard::-webkit-scrollbar-thumb {
+            background: var(--border-color);
+            border-radius: 3px;
+        }
+
+        .leaderboard-item {
+            display: flex;
+            align-items: center;
+            padding: 12px 0;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .leaderboard-item:last-child {
+            border-bottom: none;
+        }
+
+        .leaderboard-rank {
+            font-family: 'Space Mono', monospace;
+            font-size: 12px;
+            font-weight: 700;
+            width: 28px;
+            height: 28px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 6px;
+            margin-right: 12px;
+        }
+
+        .leaderboard-rank.gold { background: linear-gradient(135deg, #fbbf24, #f59e0b); color: #1a1a1a; }
+        .leaderboard-rank.silver { background: linear-gradient(135deg, #e2e8f0, #94a3b8); color: #1a1a1a; }
+        .leaderboard-rank.bronze { background: linear-gradient(135deg, #d97706, #b45309); color: white; }
+        .leaderboard-rank.default { background: var(--bg-secondary); color: var(--text-muted); }
+
+        .leaderboard-info {
+            flex: 1;
+        }
+
+        .leaderboard-name {
+            font-weight: 500;
+            font-size: 14px;
+        }
+
+        .leaderboard-warehouse {
+            font-size: 11px;
+            color: var(--text-muted);
+        }
+
+        .leaderboard-count {
+            font-family: 'Space Mono', monospace;
+            font-size: 18px;
+            font-weight: 700;
+            color: var(--accent-cyan);
+        }
+
+        /* Warehouse Colors */
+        .san-diego { --warehouse-color: #3b82f6; }
+        .mobile { --warehouse-color: #10b981; }
+        .maywood { --warehouse-color: #f59e0b; }
+        .san-francisco { --warehouse-color: #8b5cf6; }
+        .atlanta { --warehouse-color: #ec4899; }
+        .fort-lauderdale { --warehouse-color: #06b6d4; }
+        .raleigh { --warehouse-color: #f43f5e; }
+        .memphis { --warehouse-color: #84cc16; }
+
+        .warehouse-card .warehouse-icon {
+            background: var(--warehouse-color);
+            color: white;
+        }
+
+        .warehouse-card .warehouse-total {
+            color: var(--warehouse-color);
+        }
+
+        .warehouse-card .tech-bar-fill {
+            background: var(--warehouse-color);
+        }
+
+        /* Daily Breakdown */
+        .daily-grid {
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            gap: 8px;
+            margin-top: 12px;
+        }
+
+        .daily-item {
+            text-align: center;
+            padding: 10px 6px;
+            background: var(--bg-secondary);
+            border-radius: 8px;
+        }
+
+        .daily-date {
+            font-size: 10px;
+            color: var(--text-muted);
+            margin-bottom: 4px;
+        }
+
+        .daily-value {
+            font-family: 'Space Mono', monospace;
+            font-size: 14px;
+            font-weight: 600;
+        }
+
+        /* Comparison Section */
+        .comparison-section {
+            margin-top: 32px;
+        }
+
+        .comparison-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .comparison-title {
+            font-size: 20px;
+            font-weight: 600;
+        }
+
+        /* Hide/Show classes */
+        .hidden {
+            display: none !important;
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .dashboard {
+                padding: 16px;
+            }
+
+            .header {
+                flex-direction: column;
+                gap: 16px;
+            }
+
+            .summary-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+
+            .warehouse-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .warehouse-stats {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+
+        /* Animations */
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .animate-in {
+            animation: fadeIn 0.4s ease forwards;
+        }
+
+        .warehouse-card:nth-child(1) { animation-delay: 0.05s; }
+        .warehouse-card:nth-child(2) { animation-delay: 0.1s; }
+        .warehouse-card:nth-child(3) { animation-delay: 0.15s; }
+        .warehouse-card:nth-child(4) { animation-delay: 0.2s; }
+        .warehouse-card:nth-child(5) { animation-delay: 0.25s; }
+        .warehouse-card:nth-child(6) { animation-delay: 0.3s; }
+        .warehouse-card:nth-child(7) { animation-delay: 0.35s; }
+        .warehouse-card:nth-child(8) { animation-delay: 0.4s; }
+
+        /* Inside/Outside Averages Styling */
+        .avg-highlight {
+            color: var(--accent-cyan);
+        }
+    </style>
+</head>
+<body>
+    <div class="dashboard">
+        <!-- Header -->
+        <header class="header">
+            <div class="header-left">
+                <h1>Work Order Daily Totals</h1>
+                <p>Arey Jones Educational Solutions • Warehouse Performance Dashboard</p>
+            </div>
+            <div class="header-right">
+                <div class="week-toggle">
+                    <button id="prevWeekBtn" onclick="showWeek('previous')">Jan 5-9</button>
+                    <button id="currWeekBtn" class="active" onclick="showWeek('current')">Jan 12-16</button>
+                    <button id="bothWeeksBtn" onclick="showWeek('both')">Both Weeks</button>
+                </div>
+            </div>
+        </header>
+
+        <!-- Summary Cards -->
+        <div class="summary-grid" id="summaryCards">
+            <!-- Populated by JS -->
+        </div>
+
+        <!-- Main Content -->
+        <div class="main-grid">
+            <!-- Chart Section -->
+            <div class="card">
+                <div class="card-header">
+                    <div>
+                        <div class="card-title">Daily Work Orders by Warehouse</div>
+                        <div class="card-subtitle" id="chartSubtitle">Showing current week (Jan 12-16)</div>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <div class="chart-container">
+                        <canvas id="dailyChart"></canvas>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Leaderboard -->
+            <div class="card">
+                <div class="card-header">
+                    <div>
+                        <div class="card-title">Top Technicians</div>
+                        <div class="card-subtitle" id="leaderboardSubtitle">By total work orders completed</div>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <div class="leaderboard" id="leaderboard">
+                        <!-- Populated by JS -->
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Warehouse Details -->
+        <div class="comparison-section">
+            <div class="comparison-header">
+                <h2 class="comparison-title">Warehouse Details</h2>
+            </div>
+            <div class="warehouse-grid" id="warehouseGrid">
+                <!-- Populated by JS -->
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Complete Data for Both Weeks
+        const warehouseData = {
+            sanDiego: {
+                name: "San Diego",
+                icon: "SD",
+                colorClass: "san-diego",
+                previous: {
+                    dates: ["1/5", "1/6", "1/7", "1/8", "1/9"],
+                    dailyTotals: [29, 27, 56, 46, 69],
+                    total: 227,
+                    inside: 192,
+                    outside: 19,
+                    technicians: [
+                        { name: "Dakin Young", total: 46 },
+                        { name: "Andres Avila", total: 27 },
+                        { name: "Martin Alwakeel", total: 24 },
+                        { name: "Mario Martinez", total: 21 },
+                        { name: "Brady Milhous", total: 19 },
+                        { name: "Javier Martinez", total: 16 },
+                        { name: "Dong Nguyen", total: 14 },
+                        { name: "Drenius Ewell", total: 14 },
+                        { name: "Nicholas Gross", total: 14 },
+                        { name: "Carlton Reeves", total: 12 },
+                        { name: "Bill Turner", total: 10 },
+                        { name: "Luan Lam", total: 10 }
+                    ]
+                },
+                current: {
+                    dates: ["1/12", "1/13", "1/14", "1/15", "1/16"],
+                    dailyTotals: [65, 88, 67, 69, 72],
+                    total: 361,
+                    inside: 307,
+                    outside: 10,
+                    technicians: [
+                        { name: "Dakin Young", total: 68 },
+                        { name: "Martin Alwakeel", total: 65 },
+                        { name: "Andres Avila", total: 50 },
+                        { name: "Mario Martinez", total: 31 },
+                        { name: "Brady Milhous", total: 30 },
+                        { name: "Drenius Ewell", total: 26 },
+                        { name: "Carlton Reeves", total: 25 },
+                        { name: "Dong Nguyen", total: 19 },
+                        { name: "Luan Lam", total: 17 },
+                        { name: "Nicholas Gross", total: 12 },
+                        { name: "Bill Turner", total: 11 },
+                        { name: "Javier Martinez", total: 7 }
+                    ]
+                }
+            },
+            mobile: {
+                name: "Mobile",
+                icon: "MB",
+                colorClass: "mobile",
+                previous: {
+                    dates: ["1/5", "1/6", "1/7", "1/8", "1/9"],
+                    dailyTotals: [53, 57, 56, 74, 96],
+                    total: 336,
+                    inside: 249,
+                    outside: 40,
+                    technicians: [
+                        { name: "Katie Maxwell", total: 44 },
+                        { name: "Robert Hammon", total: 39 },
+                        { name: "Robert Wells", total: 37 },
+                        { name: "Tremaine Wheat", total: 33 },
+                        { name: "Daniel Crager", total: 29 },
+                        { name: "Bryan Grayson", total: 28 },
+                        { name: "Tyler Anderson", total: 26 },
+                        { name: "Cierra Hawkins", total: 25 },
+                        { name: "Matt McCafferty", total: 23 },
+                        { name: "Al Dean", total: 17 },
+                        { name: "Fred Lutin", total: 16 },
+                        { name: "Rodney James", total: 13 },
+                        { name: "KJ Williams", total: 4 },
+                        { name: "Ryan Caffee", total: 2 }
+                    ]
+                },
+                current: {
+                    dates: ["1/12", "1/13", "1/14", "1/15", "1/16"],
+                    dailyTotals: [67, 80, 91, 86, 86],
+                    total: 410,
+                    inside: 284,
+                    outside: 47,
+                    technicians: [
+                        { name: "Tremaine Wheat", total: 51 },
+                        { name: "Tyler Anderson", total: 46 },
+                        { name: "Cierra Hawkins", total: 44 },
+                        { name: "Ryan Caffee", total: 43 },
+                        { name: "Robert Wells", total: 32 },
+                        { name: "Katie Maxwell", total: 31 },
+                        { name: "Robert Hammon", total: 26 },
+                        { name: "Daniel Crager", total: 25 },
+                        { name: "Rodney James", total: 25 },
+                        { name: "Jhan Sarmiento", total: 23 },
+                        { name: "Fred Lutin", total: 20 },
+                        { name: "Matt McCafferty", total: 20 },
+                        { name: "Bryan Grayson", total: 19 },
+                        { name: "Nika Kersh", total: 5 }
+                    ]
+                }
+            },
+            maywood: {
+                name: "Maywood (LA)",
+                icon: "LA",
+                colorClass: "maywood",
+                previous: {
+                    dates: ["1/5", "1/6", "1/7", "1/8", "1/9"],
+                    dailyTotals: [62, 51, 50, 48, 68],
+                    total: 279,
+                    inside: 199,
+                    outside: 35,
+                    technicians: [
+                        { name: "Ken Wong", total: 45 },
+                        { name: "Pablo Arevalo", total: 34 },
+                        { name: "Tin Pham", total: 34 },
+                        { name: "Yuliana Uriostegui", total: 28 },
+                        { name: "Guillermo Cruz", total: 26 },
+                        { name: "Robert Valle", total: 25 },
+                        { name: "Cesar Rivera", total: 22 },
+                        { name: "Mario Valle", total: 21 },
+                        { name: "Eddi Armira", total: 19 },
+                        { name: "Peter Hui", total: 18 },
+                        { name: "Abdul Pasta", total: 7 }
+                    ]
+                },
+                current: {
+                    dates: ["1/12", "1/13", "1/14", "1/15", "1/16"],
+                    dailyTotals: [63, 54, 41, 47, 58],
+                    total: 263,
+                    inside: 163,
+                    outside: 53,
+                    technicians: [
+                        { name: "Ken Wong", total: 44 },
+                        { name: "Robert Valle", total: 31 },
+                        { name: "Peter Hui", total: 30 },
+                        { name: "Eddi Armira", total: 28 },
+                        { name: "Pablo Arevalo", total: 26 },
+                        { name: "Tin Pham", total: 25 },
+                        { name: "Abdul Pasta", total: 20 },
+                        { name: "Cesar Rivera", total: 18 },
+                        { name: "Mario Valle", total: 17 },
+                        { name: "Guillermo Cruz", total: 14 },
+                        { name: "Yuliana Uriostegui", total: 9 },
+                        { name: "Jhan Sarmiento", total: 1 }
+                    ]
+                }
+            },
+            sanFrancisco: {
+                name: "San Francisco",
+                icon: "SF",
+                colorClass: "san-francisco",
+                previous: {
+                    dates: ["1/5", "1/6", "1/7", "1/8", "1/9"],
+                    dailyTotals: [1, 6, 10, 18, 13],
+                    total: 49,
+                    inside: 39,
+                    outside: 10,
+                    technicians: [
+                        { name: "Haris Avilez", total: 18 },
+                        { name: "Hung Pham", total: 20 },
+                        { name: "Marco Monzon", total: 9 },
+                        { name: "Jhan Sarmiento", total: 2 }
+                    ]
+                },
+                current: {
+                    dates: ["1/12", "1/13", "1/14", "1/15", "1/16"],
+                    dailyTotals: [11, 15, 10, 11, 6],
+                    total: 53,
+                    inside: 48,
+                    outside: 4,
+                    technicians: [
+                        { name: "Marco Monzon", total: 24 },
+                        { name: "Haris Avilez", total: 18 },
+                        { name: "Hung Pham", total: 7 },
+                        { name: "Stephanie Martinez", total: 3 },
+                        { name: "Jhan Sarmiento", total: 1 }
+                    ]
+                }
+            },
+            atlanta: {
+                name: "Atlanta",
+                icon: "ATL",
+                colorClass: "atlanta",
+                previous: {
+                    dates: ["1/5", "1/6", "1/7", "1/8", "1/9"],
+                    dailyTotals: [78, 53, 17, 55, 24],
+                    total: 227,
+                    inside: 173,
+                    outside: 19,
+                    technicians: [
+                        { name: "Amelia Clarke", total: 59 },
+                        { name: "Astley Brown", total: 37 },
+                        { name: "Christian Livinus", total: 32 },
+                        { name: "Xazavier Baptiste", total: 31 },
+                        { name: "Maurice Persaud", total: 22 },
+                        { name: "Shanai Williams", total: 16 },
+                        { name: "Christopher Dubiose", total: 10 },
+                        { name: "Eric Garlo", total: 10 },
+                        { name: "Jefferson Clarke", total: 9 },
+                        { name: "Catherine Espinoza", total: 1 }
+                    ]
+                },
+                current: {
+                    dates: ["1/12", "1/13", "1/14", "1/15", "1/16"],
+                    dailyTotals: [51, 41, 26, 48, 30],
+                    total: 196,
+                    inside: 150,
+                    outside: 18,
+                    technicians: [
+                        { name: "Xazavier Baptiste", total: 45 },
+                        { name: "Shanai Williams", total: 28 },
+                        { name: "Eva Vidal", total: 27 },
+                        { name: "Jorge Vidal", total: 26 },
+                        { name: "Christian Livinus", total: 12 },
+                        { name: "Christopher Dubiose", total: 11 },
+                        { name: "Amelia Clarke", total: 10 },
+                        { name: "Eric Garlo", total: 10 },
+                        { name: "Maurice Persaud", total: 10 },
+                        { name: "Astley Brown", total: 9 },
+                        { name: "Jefferson Clarke", total: 5 },
+                        { name: "Catherine Espinoza", total: 3 }
+                    ]
+                }
+            },
+            fortLauderdale: {
+                name: "Fort Lauderdale",
+                icon: "FTL",
+                colorClass: "fort-lauderdale",
+                previous: {
+                    dates: ["1/5", "1/6", "1/7", "1/8", "1/9"],
+                    dailyTotals: [12, 11, 12, 9, 11],
+                    total: 55,
+                    inside: 24,
+                    outside: 28,
+                    technicians: [
+                        { name: "Alex Kasyanov", total: 16 },
+                        { name: "Nestor Barrera", total: 9 },
+                        { name: "Savoit Eldivert", total: 6 },
+                        { name: "Todler Moise", total: 5 },
+                        { name: "Germaine Ferrier", total: 4 },
+                        { name: "Jhan Sarmiento", total: 4 },
+                        { name: "Nowins Moise", total: 4 },
+                        { name: "Eva Vidal", total: 3 },
+                        { name: "Kenny Mardy", total: 2 },
+                        { name: "Andre Douglas", total: 1 },
+                        { name: "Jorge Vidal", total: 1 }
+                    ]
+                },
+                current: {
+                    dates: ["1/12", "1/13", "1/14", "1/15", "1/16"],
+                    dailyTotals: [9, 23, 11, 17, 10],
+                    total: 70,
+                    inside: 15,
+                    outside: 52,
+                    technicians: [
+                        { name: "Nestor Barrera", total: 19 },
+                        { name: "Germaine Ferrier", total: 14 },
+                        { name: "Nowins Moise", total: 11 },
+                        { name: "Kenny Mardy", total: 8 },
+                        { name: "Todler Moise", total: 8 },
+                        { name: "Alex Kasyanov", total: 5 },
+                        { name: "Estefania Hernandez", total: 3 },
+                        { name: "Jhan Sarmiento", total: 1 },
+                        { name: "Stephanie Martinez", total: 1 }
+                    ]
+                }
+            },
+            raleigh: {
+                name: "Raleigh",
+                icon: "RAL",
+                colorClass: "raleigh",
+                previous: {
+                    dates: ["1/5", "1/6", "1/7", "1/8", "1/9"],
+                    dailyTotals: [23, 27, 19, 23, 21],
+                    total: 113,
+                    inside: 1,
+                    outside: 112,
+                    technicians: [
+                        { name: "Joseph Ninan", total: 28 },
+                        { name: "Aaron Simmons", total: 26 },
+                        { name: "Danny Vang", total: 22 },
+                        { name: "Indra Black", total: 21 },
+                        { name: "Andre Smith", total: 15 },
+                        { name: "Samuel Deery", total: 1 }
+                    ]
+                },
+                current: {
+                    dates: ["1/12", "1/13", "1/14", "1/15", "1/16"],
+                    dailyTotals: [12, 12, 23, 17, 34],
+                    total: 98,
+                    inside: 17,
+                    outside: 81,
+                    technicians: [
+                        { name: "Indra Black", total: 27 },
+                        { name: "Joseph Ninan", total: 22 },
+                        { name: "Danny Vang", total: 15 },
+                        { name: "Andre Smith", total: 13 },
+                        { name: "Aaron Simmons", total: 10 },
+                        { name: "Samuel Deery", total: 6 },
+                        { name: "Jeremiah Cotton", total: 4 },
+                        { name: "Gregg Renner", total: 1 }
+                    ]
+                }
+            },
+            memphis: {
+                name: "Memphis",
+                icon: "MEM",
+                colorClass: "memphis",
+                previous: {
+                    dates: ["1/5", "1/6", "1/7", "1/8", "1/9"],
+                    dailyTotals: [3, 0, 2, 1, 3],
+                    total: 9,
+                    inside: 0,
+                    outside: 9,
+                    technicians: [
+                        { name: "Mack Neil", total: 9 }
+                    ]
+                },
+                current: {
+                    dates: ["1/12", "1/13", "1/14", "1/15", "1/16"],
+                    dailyTotals: [0, 0, 5, 4, 2],
+                    total: 11,
+                    inside: 0,
+                    outside: 11,
+                    technicians: [
+                        { name: "Mack Neil", total: 11 }
+                    ]
+                }
+            }
+        };
+
+        // State
+        let currentView = 'current';
+        let dailyChart = null;
+        let expandedWarehouses = {};
+
+        // Calculate totals
+        function calculateTotals(period) {
+            let totalWO = 0;
+            let totalInside = 0;
+            let totalOutside = 0;
+            let allTechs = [];
+            let warehouseTotals = {};
+            let techCount = 0;
+
+            Object.entries(warehouseData).forEach(([key, warehouse]) => {
+                const data = period === 'both' 
+                    ? { total: warehouse.previous.total + warehouse.current.total,
+                        inside: warehouse.previous.inside + warehouse.current.inside,
+                        outside: warehouse.previous.outside + warehouse.current.outside }
+                    : warehouse[period];
+                
+                totalWO += data.total;
+                totalInside += data.inside;
+                totalOutside += data.outside;
+                warehouseTotals[key] = data.total;
+
+                // Combine technicians
+                const techs = period === 'both'
+                    ? combineTechnicians(warehouse.previous.technicians, warehouse.current.technicians)
+                    : warehouse[period].technicians;
+
+                techs.forEach(tech => {
+                    allTechs.push({ ...tech, warehouse: warehouse.name });
+                });
+            });
+
+            // Sort technicians by total
+            allTechs.sort((a, b) => b.total - a.total);
+            
+            // Count unique technicians
+            const uniqueTechs = new Set(allTechs.map(t => t.name + t.warehouse));
+            techCount = uniqueTechs.size;
+
+            return { totalWO, totalInside, totalOutside, allTechs, warehouseTotals, techCount };
+        }
+
+        function combineTechnicians(prev, curr) {
+            const combined = {};
+            prev.forEach(t => { combined[t.name] = (combined[t.name] || 0) + t.total; });
+            curr.forEach(t => { combined[t.name] = (combined[t.name] || 0) + t.total; });
+            return Object.entries(combined).map(([name, total]) => ({ name, total }))
+                .sort((a, b) => b.total - a.total);
+        }
+
+        // Update Summary Cards
+        function updateSummaryCards() {
+            const currentData = calculateTotals('current');
+            const previousData = calculateTotals('previous');
+            const displayData = currentView === 'both' ? calculateTotals('both') : 
+                               currentView === 'current' ? currentData : previousData;
+
+            const changeWO = ((currentData.totalWO - previousData.totalWO) / previousData.totalWO * 100).toFixed(1);
+            const avgPerTech = (displayData.totalWO / displayData.techCount).toFixed(1);
+            const topWarehouse = Object.entries(displayData.warehouseTotals)
+                .sort(([,a], [,b]) => b - a)[0];
+
+            // Calculate weekly averages for inside and outside
+            const days = currentView === 'both' ? 10 : 5;
+            const insideAvgPerDay = (displayData.totalInside / days).toFixed(1);
+            const outsideAvgPerDay = (displayData.totalOutside / days).toFixed(1);
+
+            const summaryHTML = `
+                <div class="summary-card">
+                    <div class="summary-card-label">Total Work Orders</div>
+                    <div class="summary-card-value">${displayData.totalWO.toLocaleString()}</div>
+                    ${currentView !== 'both' ? `<div class="summary-card-change ${changeWO >= 0 ? 'positive' : 'negative'}">
+                        ${changeWO >= 0 ? '↑' : '↓'} ${Math.abs(changeWO)}% vs ${currentView === 'current' ? 'prev' : 'next'} week
+                    </div>` : `<div class="summary-card-change positive">Combined 2 weeks</div>`}
+                </div>
+                <div class="summary-card">
+                    <div class="summary-card-label">Inside Work Orders</div>
+                    <div class="summary-card-value">${displayData.totalInside.toLocaleString()}</div>
+                    <div class="summary-card-change">Avg <span class="avg-highlight">${insideAvgPerDay}</span>/day</div>
+                </div>
+                <div class="summary-card">
+                    <div class="summary-card-label">Outside Work Orders</div>
+                    <div class="summary-card-value">${displayData.totalOutside.toLocaleString()}</div>
+                    <div class="summary-card-change">Avg <span class="avg-highlight">${outsideAvgPerDay}</span>/day</div>
+                </div>
+                <div class="summary-card">
+                    <div class="summary-card-label">Inside Weekly Avg</div>
+                    <div class="summary-card-value">${(displayData.totalInside / (days/5)).toFixed(0)}</div>
+                    <div class="summary-card-change">${((displayData.totalInside/displayData.totalWO)*100).toFixed(1)}% of total</div>
+                </div>
+                <div class="summary-card">
+                    <div class="summary-card-label">Outside Weekly Avg</div>
+                    <div class="summary-card-value">${(displayData.totalOutside / (days/5)).toFixed(0)}</div>
+                    <div class="summary-card-change">${((displayData.totalOutside/displayData.totalWO)*100).toFixed(1)}% of total</div>
+                </div>
+                <div class="summary-card">
+                    <div class="summary-card-label">Active Technicians</div>
+                    <div class="summary-card-value">${displayData.techCount}</div>
+                    <div class="summary-card-change">Avg ${avgPerTech} WO/tech</div>
+                </div>
+                <div class="summary-card">
+                    <div class="summary-card-label">Top Warehouse</div>
+                    <div class="summary-card-value">${warehouseData[topWarehouse[0]].name.split(' ')[0]}</div>
+                    <div class="summary-card-change">${topWarehouse[1]} work orders</div>
+                </div>
+            `;
+
+            document.getElementById('summaryCards').innerHTML = summaryHTML;
+        }
+
+        // Update Chart
+        function updateChart() {
+            const ctx = document.getElementById('dailyChart').getContext('2d');
+            
+            if (dailyChart) {
+                dailyChart.destroy();
+            }
+
+            const colors = {
+                sanDiego: '#3b82f6',
+                mobile: '#10b981',
+                maywood: '#f59e0b',
+                sanFrancisco: '#8b5cf6',
+                atlanta: '#ec4899',
+                fortLauderdale: '#06b6d4',
+                raleigh: '#f43f5e',
+                memphis: '#84cc16'
+            };
+
+            let labels, datasets;
+
+            if (currentView === 'both') {
+                labels = ['1/5', '1/6', '1/7', '1/8', '1/9', '1/12', '1/13', '1/14', '1/15', '1/16'];
+                datasets = Object.entries(warehouseData).map(([key, warehouse]) => ({
+                    label: warehouse.name,
+                    data: [...warehouse.previous.dailyTotals, ...warehouse.current.dailyTotals],
+                    backgroundColor: colors[key],
+                    borderColor: colors[key],
+                    borderWidth: 2,
+                    tension: 0.3,
+                    fill: false
+                }));
+                document.getElementById('chartSubtitle').textContent = 'Showing both weeks (Jan 5-16)';
+            } else {
+                const period = currentView;
+                labels = warehouseData.sanDiego[period].dates;
+                datasets = Object.entries(warehouseData).map(([key, warehouse]) => ({
+                    label: warehouse.name,
+                    data: warehouse[period].dailyTotals,
+                    backgroundColor: colors[key],
+                    borderColor: colors[key],
+                    borderWidth: 2,
+                    tension: 0.3,
+                    fill: false
+                }));
+                document.getElementById('chartSubtitle').textContent = 
+                    `Showing ${period === 'current' ? 'current' : 'previous'} week (${period === 'current' ? 'Jan 12-16' : 'Jan 5-9'})`;
+            }
+
+            dailyChart = new Chart(ctx, {
+                type: 'line',
+                data: { labels, datasets },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    interaction: {
+                        mode: 'index',
+                        intersect: false
+                    },
+                    plugins: {
+                        legend: {
+                            position: 'bottom',
+                            labels: {
+                                color: '#94a3b8',
+                                usePointStyle: true,
+                                padding: 20,
+                                font: { size: 11 }
+                            }
+                        }
+                    },
+                    scales: {
+                        x: {
+                            grid: { color: '#2d3748', drawBorder: false },
+                            ticks: { color: '#64748b' }
+                        },
+                        y: {
+                            grid: { color: '#2d3748', drawBorder: false },
+                            ticks: { color: '#64748b' },
+                            beginAtZero: true
+                        }
+                    }
+                }
+            });
+        }
+
+        // Update Leaderboard
+        function updateLeaderboard() {
+            const data = calculateTotals(currentView);
+            const top20 = data.allTechs.slice(0, 20);
+
+            const html = top20.map((tech, index) => {
+                let rankClass = 'default';
+                if (index === 0) rankClass = 'gold';
+                else if (index === 1) rankClass = 'silver';
+                else if (index === 2) rankClass = 'bronze';
+
+                return `
+                    <div class="leaderboard-item">
+                        <div class="leaderboard-rank ${rankClass}">${index + 1}</div>
+                        <div class="leaderboard-info">
+                            <div class="leaderboard-name">${tech.name}</div>
+                            <div class="leaderboard-warehouse">${tech.warehouse}</div>
+                        </div>
+                        <div class="leaderboard-count">${tech.total}</div>
+                    </div>
+                `;
+            }).join('');
+
+            document.getElementById('leaderboard').innerHTML = html;
+            document.getElementById('leaderboardSubtitle').textContent = 
+                currentView === 'both' ? 'Combined total (Jan 5-16)' :
+                `${currentView === 'current' ? 'Current' : 'Previous'} week totals`;
+        }
+
+        // Toggle technician list expansion
+        function toggleTechList(warehouseKey) {
+            expandedWarehouses[warehouseKey] = !expandedWarehouses[warehouseKey];
+            updateWarehouseGrid();
+        }
+
+        // Update Warehouse Grid
+        function updateWarehouseGrid() {
+            const html = Object.entries(warehouseData).map(([key, warehouse]) => {
+                const prevData = warehouse.previous;
+                const currData = warehouse.current;
+                
+                let displayData, dates, dailyTotals;
+                
+                if (currentView === 'both') {
+                    displayData = {
+                        total: prevData.total + currData.total,
+                        inside: prevData.inside + currData.inside,
+                        outside: prevData.outside + currData.outside,
+                        technicians: combineTechnicians(prevData.technicians, currData.technicians)
+                    };
+                    dates = [...prevData.dates, ...currData.dates];
+                    dailyTotals = [...prevData.dailyTotals, ...currData.dailyTotals];
+                } else {
+                    displayData = currentView === 'current' ? currData : prevData;
+                    dates = displayData.dates;
+                    dailyTotals = displayData.dailyTotals;
+                }
+
+                const maxTech = Math.max(...displayData.technicians.map(t => t.total));
+                const change = ((currData.total - prevData.total) / prevData.total * 100).toFixed(1);
+                
+                // Calculate inside/outside daily averages
+                const days = currentView === 'both' ? 10 : 5;
+                const insideAvg = (displayData.inside / days).toFixed(1);
+                const outsideAvg = (displayData.outside / days).toFixed(1);
+
+                // Determine how many techs to show
+                const isExpanded = expandedWarehouses[key];
+                const techsToShow = isExpanded ? displayData.technicians : displayData.technicians.slice(0, 6);
+                const hasMore = displayData.technicians.length > 6;
+
+                const techRows = techsToShow.map(tech => `
+                    <div class="tech-row">
+                        <span class="tech-name">${tech.name}</span>
+                        <span class="tech-count">${tech.total}</span>
+                        <div class="tech-bar">
+                            <div class="tech-bar-fill" style="width: ${(tech.total/maxTech)*100}%"></div>
+                        </div>
+                    </div>
+                `).join('');
+
+                // Show appropriate daily breakdown
+                const dailyItems = currentView === 'both' 
+                    ? `<div style="font-size: 11px; color: var(--text-muted); text-align: center; padding: 8px;">
+                         Prev: ${prevData.total} | Curr: ${currData.total}
+                       </div>`
+                    : `<div class="daily-grid">
+                        ${dates.map((date, i) => `
+                            <div class="daily-item">
+                                <div class="daily-date">${date}</div>
+                                <div class="daily-value">${dailyTotals[i]}</div>
+                            </div>
+                        `).join('')}
+                       </div>`;
+
+                const showMoreBtn = hasMore ? `
+                    <button class="show-more-btn" onclick="toggleTechList('${key}')">
+                        ${isExpanded ? '▲ Show Less' : `▼ Show All ${displayData.technicians.length} Technicians`}
+                    </button>
+                ` : '';
+
+                return `
+                    <div class="warehouse-card ${warehouse.colorClass} animate-in">
+                        <div class="warehouse-header">
+                            <div class="warehouse-name">
+                                <div class="warehouse-icon">${warehouse.icon}</div>
+                                ${warehouse.name}
+                            </div>
+                            <div class="warehouse-total">${displayData.total}</div>
+                        </div>
+                        <div class="warehouse-body">
+                            <div class="warehouse-stats">
+                                <div class="warehouse-stat">
+                                    <div class="warehouse-stat-label">Inside</div>
+                                    <div class="warehouse-stat-value">${displayData.inside}</div>
+                                </div>
+                                <div class="warehouse-stat">
+                                    <div class="warehouse-stat-label">Outside</div>
+                                    <div class="warehouse-stat-value">${displayData.outside}</div>
+                                </div>
+                                <div class="warehouse-stat">
+                                    <div class="warehouse-stat-label">In Avg/Day</div>
+                                    <div class="warehouse-stat-value" style="color: var(--accent-cyan)">${insideAvg}</div>
+                                </div>
+                                <div class="warehouse-stat">
+                                    <div class="warehouse-stat-label">Out Avg/Day</div>
+                                    <div class="warehouse-stat-value" style="color: var(--accent-amber)">${outsideAvg}</div>
+                                </div>
+                            </div>
+                            <div class="warehouse-stats" style="grid-template-columns: repeat(2, 1fr); margin-top: 8px;">
+                                <div class="warehouse-stat">
+                                    <div class="warehouse-stat-label">WoW Change</div>
+                                    <div class="warehouse-stat-value" style="color: ${change >= 0 ? 'var(--accent-emerald)' : 'var(--accent-rose)'}">
+                                        ${change >= 0 ? '+' : ''}${change}%
+                                    </div>
+                                </div>
+                                <div class="warehouse-stat">
+                                    <div class="warehouse-stat-label">Technicians</div>
+                                    <div class="warehouse-stat-value">${displayData.technicians.length}</div>
+                                </div>
+                            </div>
+                            ${dailyItems}
+                            <div class="tech-table" style="margin-top: 16px;">
+                                ${techRows}
+                            </div>
+                            ${showMoreBtn}
+                        </div>
+                    </div>
+                `;
+            }).join('');
+
+            document.getElementById('warehouseGrid').innerHTML = html;
+        }
+
+        // Show Week
+        function showWeek(week) {
+            currentView = week;
+            
+            // Update toggle buttons
+            document.querySelectorAll('.week-toggle button').forEach(btn => btn.classList.remove('active'));
+            if (week === 'previous') document.getElementById('prevWeekBtn').classList.add('active');
+            else if (week === 'current') document.getElementById('currWeekBtn').classList.add('active');
+            else document.getElementById('bothWeeksBtn').classList.add('active');
+
+            // Update all components
+            updateSummaryCards();
+            updateChart();
+            updateLeaderboard();
+            updateWarehouseGrid();
+        }
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', () => {
+            showWeek('current');
+        });
+    </script>
+</body>
+</html>
