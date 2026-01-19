@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login</title>
+    <script src="https://apis.google.com/js/platform.js" async defer></script>
+    <meta name="google-signin-client_id" content="YOUR_CLIENT_ID.apps.googleusercontent.com">
+    <script>
+        function onSignIn(googleUser) {
+            var profile = googleUser.getBasicProfile();
+            var email = profile.getEmail();
+            if (!email.endsWith('@areyjones.com')) {
+                alert('Only @areyjones.com email addresses are allowed to sign in.');
+                var auth2 = gapi.auth2.getAuthInstance();
+                auth2.signOut();
+                return;
+            }
+            // Proceed with login
+            console.log('Email: ' + email);
+            // Implement your application login functionality here
+        }
+    </script>
+</head>
+<body>
+    <h1>Login</h1>
+    <div class="g_signin2" data-onsuccess="onSignIn"></div>
+</body>
+</html>
